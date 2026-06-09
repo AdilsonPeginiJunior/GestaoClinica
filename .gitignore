@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+backend/gestao_clinica.db
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+.env
+.DS_Store
+*.log
+*_extracted.txt
+_w.py
+_gen_backend.py
+frontend/_write*.py
+backend/_write*.py
+bootstrap_prototype.py
+.vscode/
