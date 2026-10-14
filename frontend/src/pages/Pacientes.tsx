@@ -1,12 +1,15 @@
 /**
  * Listagem e cadastro rapido de pacientes (recepcao / gestao).
  */
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { createPaciente, fetchPacientes } from "../api";
 import axios from "axios";
 import type { Paciente, PacienteCreate, TipoAtendimento } from "../types";
+import { useAuth } from "../context/AuthContext";
 
 export default function Pacientes() {
+  const { usuario } = useAuth();
+  const podeGerenciar = Boolean(usuario?.permissoes.includes("pacientes:gerenciar"));
   const [lista, setLista] = useState<Paciente[]>([]);
   const [busca, setBusca] = useState("");
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -17,15 +20,15 @@ export default function Pacientes() {
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState<string | null>(null);
 
-  function carregar(q?: string) {
+  const carregar = useCallback((q?: string) => {
     fetchPacientes(q)
       .then(setLista)
       .catch(() => setErro("Erro ao carregar pacientes."));
-  }
+  }, []);
 
   useEffect(() => {
     carregar();
-  }, []);
+  }, [carregar]);
 
   function handleBusca(e: FormEvent) {
     e.preventDefault();
@@ -72,11 +75,13 @@ export default function Pacientes() {
             Buscar
           </button>
         </form>
-        <button type="button" className="btn btn-primary" onClick={() => setMostrarForm(!mostrarForm)}>
-          {mostrarForm ? "Cancelar" : "Novo paciente"}
-        </button>
+        {podeGerenciar && (
+          <button type="button" className="btn btn-primary" onClick={() => setMostrarForm(!mostrarForm)}>
+            {mostrarForm ? "Cancelar" : "Novo paciente"}
+          </button>
+        )}
       </div>
-      {mostrarForm && (
+      {mostrarForm && podeGerenciar && (
         <form onSubmit={handleCriar} className="card form-grid" style={{ marginBottom: "1rem" }}>
           <label>
             Nome completo

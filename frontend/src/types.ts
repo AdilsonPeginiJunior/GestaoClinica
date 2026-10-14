@@ -28,6 +28,43 @@ export interface Usuario {
   ativo: boolean;
   psicologo_id: number | null;
   psicologo_nome?: string | null;
+  cargo_id: number | null;
+  cargo_nome: string | null;
+  permissoes: string[];
+}
+
+export interface Permissao {
+  id: number;
+  chave: string;
+  nome: string;
+  descricao: string;
+}
+
+export interface Cargo {
+  id: number;
+  nome: string;
+  descricao: string | null;
+  permissoes: Permissao[];
+}
+
+export interface UsuarioCargo {
+  id: number;
+  nome: string;
+  email: string;
+  perfil: PerfilUsuario;
+  cargo_id: number | null;
+  cargo_nome: string | null;
+}
+
+export interface Prontuario {
+  id: number;
+  paciente_id: number;
+  paciente_nome: string;
+  agendamento_id: number;
+  psicologo_id: number;
+  psicologo_nome: string;
+  evolucao: string;
+  criado_em: string;
 }
 
 export interface Paciente {

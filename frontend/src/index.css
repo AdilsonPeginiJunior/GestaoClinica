@@ -294,3 +294,53 @@ button,
   margin-bottom: 1rem;
   align-items: flex-end;
 }
+
+.permissoes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.65rem;
+}
+
+.permissao-item {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  background: #f8fffd;
+}
+
+.permissao-item input {
+  margin-top: 0.2rem;
+}
+
+.aviso-clinico {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #d97706;
+  border-radius: 6px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 0.9rem;
+}
+
+.lista-prontuario {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.prontuario-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.prontuario-cabecalho h4 {
+  margin: 0;
+}
+
+.prontuario-texto {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

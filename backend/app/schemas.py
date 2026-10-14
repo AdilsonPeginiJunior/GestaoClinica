@@ -44,6 +44,66 @@ class UsuarioRead(UsuarioBase):
 
 class UsuarioMe(UsuarioRead):
     psicologo_nome: str | None = None
+    cargo_id: int | None = None
+    cargo_nome: str | None = None
+    permissoes: list[str] = Field(default_factory=list)
+
+
+class PermissaoRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    chave: str
+    nome: str
+    descricao: str
+
+
+class CargoRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    nome: str
+    descricao: str | None
+    permissoes: list[PermissaoRead]
+
+
+class CargoCreate(BaseModel):
+    nome: str = Field(min_length=2, max_length=80)
+    descricao: str | None = Field(default=None, max_length=255)
+    permissao_ids: list[int] = Field(default_factory=list)
+
+
+class CargoUpdate(BaseModel):
+    nome: str | None = Field(default=None, min_length=2, max_length=80)
+    descricao: str | None = Field(default=None, max_length=255)
+    permissao_ids: list[int] | None = None
+
+
+class UsuarioCargoRead(BaseModel):
+    id: int
+    nome: str
+    email: EmailStr
+    perfil: PerfilUsuario
+    cargo_id: int | None
+    cargo_nome: str | None
+
+
+class UsuarioCargoUpdate(BaseModel):
+    cargo_id: int
+
+
+class ProntuarioCreate(BaseModel):
+    agendamento_id: int
+    evolucao: str = Field(min_length=1, max_length=20000)
+
+
+class ProntuarioRead(BaseModel):
+    id: int
+    paciente_id: int
+    paciente_nome: str
+    agendamento_id: int
+    psicologo_id: int
+    psicologo_nome: str
+    evolucao: str
+    criado_em: datetime
 
 
 class PsicologoBase(BaseModel):

@@ -37,4 +37,10 @@ def me(current_user: Usuario = Depends(get_current_user)):
         ativo=current_user.ativo,
         psicologo_id=current_user.psicologo_id,
         psicologo_nome=psicologo_nome,
+        cargo_id=current_user.cargo_id,
+        cargo_nome=current_user.cargo.nome if current_user.cargo else None,
+        permissoes=(
+            [permissao.chave for permissao in current_user.cargo.permissoes]
+            if current_user.cargo else []
+        ),
     )

@@ -4,14 +4,18 @@
 import axios from "axios";
 import type {
   Agendamento,
+  Cargo,
   DashboardStats,
   Paciente,
   PacienteCreate,
+  Permissao,
+  Prontuario,
   Psicologo,
   RelatorioPsicologo,
   StatusAgendamento,
   TokenResponse,
   Usuario,
+  UsuarioCargo,
 } from "./types";
 
 const TOKEN_KEY = "gestao_clinica_token";
@@ -126,5 +130,66 @@ export async function fetchRelatorioPsicologo(
     `/relatorios/psicologo/${psicologoId}`,
     { params: { data_inicio, data_fim } },
   );
+  return data;
+}
+
+export async function fetchProntuarios(): Promise<Prontuario[]> {
+  const { data } = await api.get<Prontuario[]>("/prontuario");
+  return data;
+}
+
+export async function fetchAtendimentosSemEvolucao(): Promise<Agendamento[]> {
+  const { data } = await api.get<Agendamento[]>("/prontuario/atendimentos-disponiveis");
+  return data;
+}
+
+export async function createProntuario(payload: {
+  agendamento_id: number;
+  evolucao: string;
+}): Promise<Prontuario> {
+  const { data } = await api.post<Prontuario>("/prontuario", payload);
+  return data;
+}
+
+export async function fetchCargos(): Promise<Cargo[]> {
+  const { data } = await api.get<Cargo[]>("/admin/cargos");
+  return data;
+}
+
+export async function fetchPermissoes(): Promise<Permissao[]> {
+  const { data } = await api.get<Permissao[]>("/admin/permissoes");
+  return data;
+}
+
+export async function createCargo(payload: {
+  nome: string;
+  descricao: string;
+  permissao_ids: number[];
+}): Promise<Cargo> {
+  const { data } = await api.post<Cargo>("/admin/cargos", payload);
+  return data;
+}
+
+export async function updateCargo(
+  id: number,
+  payload: { nome: string; descricao: string; permissao_ids: number[] },
+): Promise<Cargo> {
+  const { data } = await api.patch<Cargo>(`/admin/cargos/${id}`, payload);
+  return data;
+}
+
+export async function deleteCargo(id: number): Promise<void> {
+  await api.delete(`/admin/cargos/${id}`);
+}
+
+export async function fetchUsuariosCargos(): Promise<UsuarioCargo[]> {
+  const { data } = await api.get<UsuarioCargo[]>("/admin/usuarios");
+  return data;
+}
+
+export async function assignCargo(usuarioId: number, cargoId: number): Promise<UsuarioCargo> {
+  const { data } = await api.patch<UsuarioCargo>(`/admin/usuarios/${usuarioId}/cargo`, {
+    cargo_id: cargoId,
+  });
   return data;
 }

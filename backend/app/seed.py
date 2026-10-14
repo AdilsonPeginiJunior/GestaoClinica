@@ -15,10 +15,84 @@ from app.models import (
     Paciente,
     PerfilUsuario,
     Psicologo,
+    Cargo,
+    Permissao,
     StatusAgendamento,
     TipoAtendimento,
     Usuario,
 )
+
+PERMISSOES_INICIAIS = [
+    ("dashboard:acessar", "Dashboard", "Acessar indicadores gerais."),
+    ("pacientes:consultar", "Consultar pacientes", "Visualizar cadastro administrativo de pacientes."),
+    ("pacientes:gerenciar", "Gerenciar pacientes", "Criar e editar cadastros de pacientes."),
+    ("psicologos:consultar", "Consultar psicólogos", "Visualizar cadastro de psicólogos."),
+    ("psicologos:gerenciar", "Gerenciar psicólogos", "Criar e editar cadastros de psicólogos."),
+    ("agenda:consultar", "Consultar agenda", "Visualizar agendamentos."),
+    ("agenda:gerenciar", "Gerenciar agenda", "Criar agendamentos e alterar status."),
+    ("relatorios:consultar_proprio", "Consultar próprios relatórios", "Visualizar relatórios do próprio psicólogo."),
+    ("relatorios:consultar_todos", "Consultar relatórios", "Visualizar relatórios de todos os psicólogos."),
+    ("financeiro:consultar", "Consultar financeiro", "Visualizar lançamentos financeiros."),
+    ("financeiro:gerenciar", "Gerenciar financeiro", "Criar lançamentos financeiros."),
+    ("prontuario:ler_proprio", "Ler prontuário próprio", "Ler prontuários dos próprios atendimentos."),
+    ("prontuario:ler_todos", "Ler todos os prontuários", "Ler prontuários de todos os profissionais."),
+    ("prontuario:criar", "Criar evolução clínica", "Registrar evolução em atendimento realizado."),
+]
+
+
+def seed_authorization(db: Session) -> None:
+    """Instala o catálogo inicial e associa usuários antigos aos cargos equivalentes."""
+    permissions = {item.chave: item for item in db.query(Permissao).all()}
+    for key, name, description in PERMISSOES_INICIAIS:
+        if key not in permissions:
+            item = Permissao(chave=key, nome=name, descricao=description)
+            db.add(item)
+            permissions[key] = item
+
+    defaults = {
+        "Recepção": {
+            "dashboard:acessar", "pacientes:consultar", "pacientes:gerenciar",
+            "psicologos:consultar", "agenda:consultar", "agenda:gerenciar",
+        },
+        "Psicólogo": {
+            "dashboard:acessar", "pacientes:consultar", "psicologos:consultar",
+            "agenda:consultar", "agenda:gerenciar", "relatorios:consultar_proprio",
+            "prontuario:ler_proprio", "prontuario:criar",
+        },
+        "Sócia": {
+            "dashboard:acessar", "pacientes:consultar", "pacientes:gerenciar",
+            "psicologos:consultar", "psicologos:gerenciar", "agenda:consultar",
+            "agenda:gerenciar", "relatorios:consultar_todos", "financeiro:consultar",
+            "financeiro:gerenciar",
+        },
+        "Administrador": {
+            "dashboard:acessar", "pacientes:consultar", "pacientes:gerenciar",
+            "psicologos:consultar", "psicologos:gerenciar", "agenda:consultar",
+            "agenda:gerenciar", "relatorios:consultar_todos", "financeiro:consultar",
+            "financeiro:gerenciar",
+        },
+    }
+
+    cargos = {cargo.nome: cargo for cargo in db.query(Cargo).all()}
+    if not cargos:
+        for nome, keys in defaults.items():
+            cargo = Cargo(nome=nome, descricao=f"Cargo inicial: {nome.lower()}.")
+            cargo.permissoes = [permissions[key] for key in keys]
+            db.add(cargo)
+            cargos[nome] = cargo
+    db.flush()
+
+    cargos_por_perfil = {
+        PerfilUsuario.recepcionista: "Recepção",
+        PerfilUsuario.psicologo: "Psicólogo",
+        PerfilUsuario.socia: "Sócia",
+        PerfilUsuario.admin: "Administrador",
+    }
+    for user in db.query(Usuario).filter(Usuario.cargo_id.is_(None)).all():
+        cargo = cargos.get(cargos_por_perfil[user.perfil])
+        if cargo:
+            user.cargo = cargo
+    db.commit()
 
 
 def seed_database(db: Session) -> None:

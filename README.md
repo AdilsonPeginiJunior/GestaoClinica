@@ -10,14 +10,15 @@ Sistema web de demonstração para clínica de psicologia: agenda, cadastros, fa
 
 | Item | Situação |
 |------|----------|
-| **Versão** | 0.1.1-prototype |
-| **Última atualização** | 2026-06-09 |
+| **Versão** | 0.2.0-prototype |
+| **Última atualização** | 2026-10-08 |
 | Login e perfis (RBAC) | Funcional (demo) |
+| Cargos e permissões configuráveis | Funcional (protótipo) |
 | Cadastro de pacientes / psicólogos | Funcional (demo) |
 | Agenda e status de consulta | Funcional (demo) |
 | Financeiro automático ao marcar *realizado* | Funcional (demo) |
 | Relatório por psicólogo | Funcional (demo) |
-| Prontuário eletrônico | Não iniciado |
+| Prontuário eletrônico | MVP iniciado: evoluções imutáveis por atendimento realizado |
 | WhatsApp / exportação PDF | Planejado |
 | Endpoint `/health` | Funcional (demo) |
 | Teste automatizado recepção | `backend/test_recepcao.py` |
@@ -56,17 +57,15 @@ Sistema web de demonstração para clínica de psicologia: agenda, cadastros, fa
 
 ### Atalho (Windows)
 
-Terminal 1 — backend:
+Abra um terminal na raiz do projeto e execute:
 
-```powershell
-.\scripts\iniciar-backend.ps1
+```bash
+python app.py
 ```
 
-Terminal 2 — frontend:
+O atalho abre terminais separados para a API e a interface e, em seguida, abre o navegador em http://localhost:5173. Mantenha os dois terminais abertos enquanto usar o sistema. Na primeira execucao, o terminal do backend pode criar o ambiente virtual e instalar as dependencias.
 
-```powershell
-.\scripts\iniciar-frontend.ps1
-```
+Para iniciar os servicos separadamente, use `.\scripts\iniciar-backend.ps1` e `.\scripts\iniciar-frontend.ps1` em terminais distintos.
 
 **Se o login ficar em "Entrando…"** sem sair: a API provavelmente travou. Feche processos Python na porta 8000 e reinicie o backend:
 
@@ -128,6 +127,14 @@ Senha de todos: **`demo123`**
 
 Na tela de login há botões de **acesso rápido** para cada perfil.
 
+## Cargos, permissões e prontuário
+
+O catálogo de permissões é criado no banco na inicialização. O usuário `admin@demo.com` acessa **Cargos e acessos** para criar, editar e excluir cargos, atribuir permissões e associar os usuários existentes aos cargos. A API também valida as permissões em cada rota; ocultar links na interface não é usado como controle de segurança. Somente o perfil de administrador pode administrar cargos ou atribuições.
+
+Os cargos iniciais preservam as permissões operacionais dos perfis da demonstração. O cargo Psicólogo pode consultar e registrar evoluções dos próprios atendimentos; leitura clínica ampla é uma permissão separada e não é concedida por padrão a sócias ou administradores. Os itens de permissão representam funções implementadas no sistema; módulos novos precisam ser adicionados ao catálogo e ligados às rotas pela equipe de desenvolvimento.
+
+O MVP clínico permite registrar uma evolução textual em um atendimento marcado como realizado, uma vez por atendimento. O registro guarda paciente, atendimento, profissional e data; não há edição ou exclusão de evoluções nesta etapa. Este protótipo não possui criptografia específica dos registros, trilha de auditoria de leitura nem adequação operacional completa à LGPD. **Não registrar dados reais de saúde.**
+
 ---
 
 ## Roteiro de apresentação ao cliente (~10 min)
@@ -159,7 +166,7 @@ GestaoClinica/
 │       ├── context/          # autenticação
 │       ├── pages/            # telas
 │       └── components/       # layout
-└── docs/                     # escopos originais (.docx)
+└── docs/                     # escopos e documentos de planejamento
 ```
 
 ---
@@ -176,6 +183,12 @@ GestaoClinica/
 ---
 
 ## Changelog
+
+### v0.2.0-prototype (2026-10-08)
+
+- Catálogo de permissões e cargos persistidos no banco; atribuição a usuários restrita ao administrador.
+- Autorização no backend por cargo nas rotas de pacientes, profissionais, agenda, relatórios e financeiro.
+- MVP do prontuário com evoluções vinculadas a atendimentos realizados, leitura por permissão e registros sem edição/exclusão.
 
 ### v0.1.1-prototype (2026-06-09)
 
@@ -197,4 +210,4 @@ GestaoClinica/
 
 ## Documentação de escopo
 
-Os requisitos funcionais completos estão nos arquivos Word na raiz do projeto (`1 web app de gestão clínica.docx`, `2 primeiro escopo funcional completo.docx`).
+Os escopos e documentos de planejamento estão em [`docs/`](./docs/), incluindo os dois arquivos Word de requisitos, suas extrações de texto e o documento de hospedagem.

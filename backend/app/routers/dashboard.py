@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
-from app.auth import get_current_user
+from app.auth import has_permission, require_permission
 from app.database import get_db
 from app.models import (
     Agendamento,
@@ -43,7 +43,7 @@ def _agendamento_read(ag: Agendamento) -> AgendamentoRead:
 @router.get("/dashboard", response_model=DashboardStats)
 def dashboard(
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permission("dashboard:acessar")),
 ):
     hoje_ini = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     hoje_fim = hoje_ini + timedelta(days=1)
@@ -78,6 +78,9 @@ def dashboard(
         .scalar()
         or 0.0
     )
+    if not has_permission(current_user, "financeiro:consultar"):
+        receita_periodo = 0.0
+        repasse_periodo = 0.0
 
     if current_user.perfil in {PerfilUsuario.admin, PerfilUsuario.socia}:
         extras["psicologos_ativos"] = db.query(Psicologo).filter(Psicologo.ativo.is_(True)).count()
@@ -98,13 +101,20 @@ def dashboard(
 def relatorio_psicologo(
     psicologo_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(
+        require_permission("relatorios:consultar_proprio", "relatorios:consultar_todos")
+    ),
     data_inicio: datetime | None = Query(None),
     data_fim: datetime | None = Query(None),
 ):
-    if current_user.perfil == PerfilUsuario.psicologo and current_user.psicologo_id != psicologo_id:
-        raise HTTPException(status_code=403, detail="Acesso negado")
-    if current_user.perfil == PerfilUsuario.recepcionista:
+    if has_permission(current_user, "relatorios:consultar_todos"):
+        pass
+    elif (
+        has_permission(current_user, "relatorios:consultar_proprio")
+        and current_user.psicologo_id == psicologo_id
+    ):
+        pass
+    else:
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     psicologo = db.get(Psicologo, psicologo_id)

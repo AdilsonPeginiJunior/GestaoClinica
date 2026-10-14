@@ -5,9 +5,9 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.auth import PERFIS_FINANCEIRO, get_current_user, require_perfis
+from app.auth import require_permission
 from app.database import get_db
-from app.models import LancamentoFinanceiro, PerfilUsuario, TipoLancamento, Usuario
+from app.models import LancamentoFinanceiro, TipoLancamento, Usuario
 from app.schemas import LancamentoCreate, LancamentoRead
 
 router = APIRouter(prefix="/api/financeiro", tags=["financeiro"])
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/financeiro", tags=["financeiro"])
 @router.get("/lancamentos", response_model=list[LancamentoRead])
 def listar_lancamentos(
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_perfis(*PERFIS_FINANCEIRO)),
+    _: Usuario = Depends(require_permission("financeiro:consultar")),
     data_inicio: datetime | None = Query(None),
     data_fim: datetime | None = Query(None),
     psicologo_id: int | None = Query(None),
@@ -38,7 +38,7 @@ def listar_lancamentos(
 def criar_lancamento_manual(
     payload: LancamentoCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_perfis(PerfilUsuario.admin, PerfilUsuario.socia)),
+    _: Usuario = Depends(require_permission("financeiro:gerenciar")),
 ):
     data = payload.model_dump()
     if data.get("data_lancamento") is None:

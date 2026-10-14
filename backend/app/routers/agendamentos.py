@@ -10,7 +10,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.auth import get_current_user, require_perfis
+from app.auth import require_permission
 from app.database import get_db
 from app.models import Agendamento, PerfilUsuario, StatusAgendamento, Usuario
 from app.schemas import AgendamentoCreate, AgendamentoRead, AgendamentoUpdate
@@ -37,7 +37,7 @@ def _serialize(ag: Agendamento) -> AgendamentoRead:
 @router.get("", response_model=list[AgendamentoRead])
 def listar_agendamentos(
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permission("agenda:consultar")),
     data_inicio: datetime | None = Query(None),
     data_fim: datetime | None = Query(None),
     psicologo_id: int | None = Query(None),
@@ -62,8 +62,13 @@ def listar_agendamentos(
 def criar_agendamento(
     payload: AgendamentoCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_perfis(PerfilUsuario.recepcionista, PerfilUsuario.admin, PerfilUsuario.socia, PerfilUsuario.psicologo)),
+    current_user: Usuario = Depends(require_permission("agenda:gerenciar")),
 ):
+    if (
+        current_user.perfil == PerfilUsuario.psicologo
+        and current_user.psicologo_id != payload.psicologo_id
+    ):
+        raise HTTPException(status_code=403, detail="Acesso negado")
     ag = Agendamento(**payload.model_dump())
     db.add(ag)
     db.commit()
@@ -84,7 +89,7 @@ def atualizar_agendamento(
     agendamento_id: int,
     payload: AgendamentoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_permission("agenda:gerenciar")),
 ):
     ag = (
         db.query(Agendamento)
@@ -98,6 +103,8 @@ def atualizar_agendamento(
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     data = payload.model_dump(exclude_unset=True)
+    if current_user.perfil == PerfilUsuario.psicologo and set(data) - {"status"}:
+        raise HTTPException(status_code=403, detail="Psicologos so podem atualizar o status do proprio atendimento.")
     novo_status = data.pop("status", None)
     for key, value in data.items():
         setattr(ag, key, value)

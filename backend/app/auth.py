@@ -95,3 +95,22 @@ def require_perfis(*perfis: PerfilUsuario):
         return current_user
 
     return _checker
+
+
+def has_permission(user: Usuario, permission_key: str) -> bool:
+    """Consulta as permissões explícitas do cargo, sem conceder acesso implícito."""
+    return bool(
+        user.cargo
+        and any(permission.chave == permission_key for permission in user.cargo.permissoes)
+    )
+
+
+def require_permission(*permission_keys: str):
+    """Permite a rota se o cargo possuir ao menos uma das permissões informadas."""
+
+    def _checker(current_user: Annotated[Usuario, Depends(get_current_user)]) -> Usuario:
+        if not any(has_permission(current_user, key) for key in permission_keys):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
+        return current_user
+
+    return _checker

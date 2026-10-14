@@ -7,13 +7,20 @@ Melhoria futura: separar tabela de convênios/planos e histórico de repasse.
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Table, Text, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
 
 VALOR_PARTICULAR = 220.0
 VALOR_CONVENIO = 160.0
+
+cargo_permissoes = Table(
+    "cargo_permissoes",
+    Base.metadata,
+    Column("cargo_id", ForeignKey("cargos.id"), primary_key=True),
+    Column("permissao_id", ForeignKey("permissoes.id"), primary_key=True),
+)
 
 
 class PerfilUsuario(str, enum.Enum):
@@ -51,8 +58,51 @@ class Usuario(Base):
     perfil: Mapped[PerfilUsuario] = mapped_column(Enum(PerfilUsuario), nullable=False)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     psicologo_id: Mapped[int | None] = mapped_column(ForeignKey("psicologos.id"), nullable=True)
+    cargo_id: Mapped[int | None] = mapped_column(ForeignKey("cargos.id"), nullable=True)
 
     psicologo: Mapped["Psicologo | None"] = relationship(back_populates="usuario")
+    cargo: Mapped["Cargo | None"] = relationship(back_populates="usuarios")
+
+
+class Cargo(Base):
+    __tablename__ = "cargos"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    nome: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    descricao: Mapped[str | None] = mapped_column(String(255))
+    usuarios: Mapped[list["Usuario"]] = relationship(back_populates="cargo")
+    permissoes: Mapped[list["Permissao"]] = relationship(
+        secondary=cargo_permissoes, back_populates="cargos"
+    )
+
+
+class Permissao(Base):
+    __tablename__ = "permissoes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    chave: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    nome: Mapped[str] = mapped_column(String(100), nullable=False)
+    descricao: Mapped[str] = mapped_column(String(255), nullable=False)
+    cargos: Mapped[list[Cargo]] = relationship(
+        secondary=cargo_permissoes, back_populates="permissoes"
+    )
+
+
+class Prontuario(Base):
+    __tablename__ = "prontuarios"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    paciente_id: Mapped[int] = mapped_column(ForeignKey("pacientes.id"), nullable=False, index=True)
+    agendamento_id: Mapped[int] = mapped_column(
+        ForeignKey("agendamentos.id"), unique=True, nullable=False, index=True
+    )
+    psicologo_id: Mapped[int] = mapped_column(ForeignKey("psicologos.id"), nullable=False, index=True)
+    evolucao: Mapped[str] = mapped_column(Text, nullable=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    paciente: Mapped["Paciente"] = relationship()
+    agendamento: Mapped["Agendamento"] = relationship()
+    psicologo: Mapped["Psicologo"] = relationship()
 
 
 class Psicologo(Base):

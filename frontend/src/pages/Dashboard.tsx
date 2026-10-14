@@ -44,14 +44,18 @@ export default function Dashboard() {
             <div className="valor">{stats.agendamentos_realizados}</div>
             <div className="rotulo">Consultas realizadas</div>
           </div>
-          <div className="card">
-            <div className="valor">{formatMoeda(stats.receita_periodo)}</div>
-            <div className="rotulo">Receita no mês</div>
-          </div>
-          <div className="card">
-            <div className="valor">{formatMoeda(stats.repasse_periodo)}</div>
-            <div className="rotulo">Repasse no mês</div>
-          </div>
+          {usuario?.permissoes.includes("financeiro:consultar") && (
+            <>
+              <div className="card">
+                <div className="valor">{formatMoeda(stats.receita_periodo)}</div>
+                <div className="rotulo">Receita no mês</div>
+              </div>
+              <div className="card">
+                <div className="valor">{formatMoeda(stats.repasse_periodo)}</div>
+                <div className="rotulo">Repasse no mês</div>
+              </div>
+            </>
+          )}
         </div>
       )}
       <div className="card">

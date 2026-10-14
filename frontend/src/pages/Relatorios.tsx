@@ -4,21 +4,28 @@
 import { useEffect, useState } from "react";
 import { fetchPsicologos, fetchRelatorioPsicologo } from "../api";
 import type { Psicologo, RelatorioPsicologo } from "../types";
+import { useAuth } from "../context/AuthContext";
 
 export default function Relatorios() {
+  const { usuario } = useAuth();
+  const podeConsultarTodos = Boolean(usuario?.permissoes.includes("relatorios:consultar_todos"));
   const [psicologos, setPsicologos] = useState<Psicologo[]>([]);
   const [psicologoId, setPsicologoId] = useState<number>(0);
   const [relatorio, setRelatorio] = useState<RelatorioPsicologo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!podeConsultarTodos) {
+      if (usuario?.psicologo_id) setPsicologoId(usuario.psicologo_id);
+      return;
+    }
     fetchPsicologos()
       .then((lista) => {
         setPsicologos(lista);
         if (lista[0]) setPsicologoId(lista[0].id);
       })
       .catch(() => setErro("Erro ao carregar psicologos."));
-  }, []);
+  }, [podeConsultarTodos, usuario?.psicologo_id]);
 
   useEffect(() => {
     if (!psicologoId) return;
@@ -42,16 +49,18 @@ export default function Relatorios() {
       </header>
       {erro && <p className="erro">{erro}</p>}
       <div className="filtros">
-        <label>
-          Psicologo
-          <select value={psicologoId} onChange={(e) => setPsicologoId(Number(e.target.value))}>
-            {psicologos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
-        </label>
+        {podeConsultarTodos && (
+          <label>
+            Psicologo
+            <select value={psicologoId} onChange={(e) => setPsicologoId(Number(e.target.value))}>
+              {psicologos.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       {relatorio && (
         <>

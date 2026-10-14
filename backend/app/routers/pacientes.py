@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user, require_perfis
+from app.auth import require_permission
 from app.database import get_db
-from app.models import Paciente, PerfilUsuario, Usuario
+from app.models import Paciente, Usuario
 from app.schemas import PacienteCreate, PacienteRead, PacienteUpdate
 
 router = APIRouter(prefix="/api/pacientes", tags=["pacientes"])
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api/pacientes", tags=["pacientes"])
 @router.get("", response_model=list[PacienteRead])
 def listar_pacientes(
     db: Session = Depends(get_db),
-    _: Usuario = Depends(get_current_user),
+    _: Usuario = Depends(require_permission("pacientes:consultar")),
     q: str | None = Query(None),
     ativo: bool | None = Query(None),
 ):
@@ -34,7 +34,7 @@ def listar_pacientes(
 def criar_paciente(
     payload: PacienteCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_perfis(PerfilUsuario.recepcionista, PerfilUsuario.admin, PerfilUsuario.socia)),
+    _: Usuario = Depends(require_permission("pacientes:gerenciar")),
 ):
     paciente = Paciente(**payload.model_dump())
     db.add(paciente)
@@ -51,7 +51,11 @@ def criar_paciente(
 
 
 @router.get("/{paciente_id}", response_model=PacienteRead)
-def obter_paciente(paciente_id: int, db: Session = Depends(get_db), _: Usuario = Depends(get_current_user)):
+def obter_paciente(
+    paciente_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_permission("pacientes:consultar")),
+):
     paciente = db.get(Paciente, paciente_id)
     if not paciente:
         raise HTTPException(status_code=404, detail="Paciente nao encontrado")
@@ -63,7 +67,7 @@ def atualizar_paciente(
     paciente_id: int,
     payload: PacienteUpdate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_perfis(PerfilUsuario.recepcionista, PerfilUsuario.admin, PerfilUsuario.socia)),
+    _: Usuario = Depends(require_permission("pacientes:gerenciar")),
 ):
     paciente = db.get(Paciente, paciente_id)
     if not paciente:

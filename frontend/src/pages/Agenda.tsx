@@ -1,7 +1,7 @@
 /**
  * Agenda operacional: listar, criar e alterar status (gera financeiro ao marcar realizado).
  */
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   createAgendamento,
   fetchAgendamentos,
@@ -9,6 +9,7 @@ import {
   fetchPsicologos,
   updateAgendamento,
 } from "../api";
+import { useAuth } from "../context/AuthContext";
 import type { Agendamento, Paciente, Psicologo, StatusAgendamento } from "../types";
 
 function badgeClass(status: StatusAgendamento) {
@@ -25,6 +26,8 @@ function formatarData(iso: string) {
 }
 
 export default function Agenda() {
+  const { usuario } = useAuth();
+  const podeGerenciar = Boolean(usuario?.permissoes.includes("agenda:gerenciar"));
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [psicologos, setPsicologos] = useState<Psicologo[]>([]);
@@ -39,15 +42,16 @@ export default function Agenda() {
 
   const dadosProntos = pacientes.length > 0 && psicologos.length > 0 && pacienteId > 0 && psicologoId > 0;
 
-  function carregar() {
+  const carregar = useCallback(() => {
     const params: { psicologo_id?: number } = {};
     if (psicologoFiltro) params.psicologo_id = psicologoFiltro;
     fetchAgendamentos(params)
       .then(setAgendamentos)
       .catch(() => setErro("Erro ao carregar agenda."));
-  }
+  }, [psicologoFiltro]);
 
   useEffect(() => {
+    if (!podeGerenciar) return;
     Promise.all([fetchPacientes(), fetchPsicologos()])
       .then(([pacs, psis]) => {
         setPacientes(pacs);
@@ -57,11 +61,11 @@ export default function Agenda() {
       })
       .catch(() => setErro("Erro ao carregar cadastros auxiliares."));
     carregar();
-  }, []);
+  }, [podeGerenciar]);
 
   useEffect(() => {
     carregar();
-  }, [psicologoFiltro]);
+  }, [carregar]);
 
   async function handleNovo(e: FormEvent) {
     e.preventDefault();
@@ -111,27 +115,31 @@ export default function Agenda() {
       {erro && <p className="erro">{erro}</p>}
       {sucesso && <p style={{ color: "var(--cor-sucesso)", fontSize: "0.9rem" }}>{sucesso}</p>}
       <div className="filtros">
-        <label>
-          Filtrar psicologo
-          <select
-            value={psicologoFiltro}
-            onChange={(e) =>
-              setPsicologoFiltro(e.target.value ? Number(e.target.value) : "")
-            }
-          >
-            <option value="">Todos</option>
-            {psicologos.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="button" className="btn btn-primary" onClick={() => setMostrarForm(!mostrarForm)}>
-          {mostrarForm ? "Cancelar" : "Novo agendamento"}
-        </button>
+        {psicologos.length > 0 && (
+          <label>
+            Filtrar psicologo
+            <select
+              value={psicologoFiltro}
+              onChange={(e) =>
+                setPsicologoFiltro(e.target.value ? Number(e.target.value) : "")
+              }
+            >
+              <option value="">Todos</option>
+              {psicologos.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nome}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {podeGerenciar && (
+          <button type="button" className="btn btn-primary" onClick={() => setMostrarForm(!mostrarForm)}>
+            {mostrarForm ? "Cancelar" : "Novo agendamento"}
+          </button>
+        )}
       </div>
-      {mostrarForm && (
+      {mostrarForm && podeGerenciar && (
         <form onSubmit={handleNovo} className="card form-grid" style={{ marginBottom: "1rem" }}>
           <label>
             Paciente
@@ -175,7 +183,7 @@ export default function Agenda() {
             <th>Paciente</th>
             <th>Psicologo</th>
             <th>Status</th>
-            <th>Acoes</th>
+            {podeGerenciar && <th>Acoes</th>}
           </tr>
         </thead>
         <tbody>
@@ -187,7 +195,7 @@ export default function Agenda() {
               <td>
                 <span className={badgeClass(a.status)}>{a.status}</span>
               </td>
-              <td className="acoes-linha">
+              {podeGerenciar && <td className="acoes-linha">
                 {a.status !== "confirmado" && a.status !== "realizado" && (
                   <button
                     type="button"
@@ -215,7 +223,7 @@ export default function Agenda() {
                     Anular
                   </button>
                 )}
-              </td>
+              </td>}
             </tr>
           ))}
         </tbody>

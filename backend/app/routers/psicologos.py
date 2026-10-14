@@ -3,16 +3,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_user, require_perfis
+from app.auth import require_permission
 from app.database import get_db
-from app.models import PerfilUsuario, Psicologo, Usuario
+from app.models import Psicologo, Usuario
 from app.schemas import PsicologoCreate, PsicologoRead, PsicologoUpdate
 
 router = APIRouter(prefix="/api/psicologos", tags=["psicologos"])
 
 
 @router.get("", response_model=list[PsicologoRead])
-def listar_psicologos(db: Session = Depends(get_db), _: Usuario = Depends(get_current_user)):
+def listar_psicologos(
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_permission("psicologos:consultar")),
+):
     return db.query(Psicologo).order_by(Psicologo.nome).all()
 
 
@@ -20,7 +23,7 @@ def listar_psicologos(db: Session = Depends(get_db), _: Usuario = Depends(get_cu
 def criar_psicologo(
     payload: PsicologoCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_perfis(PerfilUsuario.admin, PerfilUsuario.socia)),
+    _: Usuario = Depends(require_permission("psicologos:gerenciar")),
 ):
     psicologo = Psicologo(**payload.model_dump())
     db.add(psicologo)
@@ -30,7 +33,11 @@ def criar_psicologo(
 
 
 @router.get("/{psicologo_id}", response_model=PsicologoRead)
-def obter_psicologo(psicologo_id: int, db: Session = Depends(get_db), _: Usuario = Depends(get_current_user)):
+def obter_psicologo(
+    psicologo_id: int,
+    db: Session = Depends(get_db),
+    _: Usuario = Depends(require_permission("psicologos:consultar")),
+):
     psicologo = db.get(Psicologo, psicologo_id)
     if not psicologo:
         raise HTTPException(status_code=404, detail="Psicologo nao encontrado")
@@ -42,7 +49,7 @@ def atualizar_psicologo(
     psicologo_id: int,
     payload: PsicologoUpdate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(require_perfis(PerfilUsuario.admin, PerfilUsuario.socia)),
+    _: Usuario = Depends(require_permission("psicologos:gerenciar")),
 ):
     psicologo = db.get(Psicologo, psicologo_id)
     if not psicologo:
