@@ -1,7 +1,7 @@
 """
 Ponto de entrada da API do protótipo Gestão Clínica.
 
-No startup: cria tabelas SQLite e executa seed de demonstração.
+No startup: prepara o schema e só cria dados fictícios quando o modo demo permite.
 Documentação interativa: http://localhost:8000/docs
 """
 
@@ -13,14 +13,16 @@ from sqlalchemy import inspect, text
 
 from app.config import settings
 from app.database import Base, SessionLocal, engine
-from app.routers import agendamentos, admin, auth, dashboard, financeiro, pacientes, prontuario, psicologos
-from app.seed import seed_authorization, seed_database
+from app.routers import agendamentos, admin, auth, dashboard, financeiro, pacientes, prontuario, psicologos, recorrencias
+from app.seed import seed_authorization, seed_database, verificar_banco_producao
+from app.schema_financeiro import atualizar_schema_financeiro
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Cria estrutura e dados fictícios na primeira subida do servidor
+    # A configuração já foi validada antes de criar a engine/importar a aplicação.
     Base.metadata.create_all(bind=engine)
+    atualizar_schema_financeiro(engine)
     if "cargo_id" not in {column["name"] for column in inspect(engine).get_columns("usuarios")}:
         with engine.begin() as connection:
             connection.execute(text(
@@ -28,7 +30,10 @@ async def lifespan(_: FastAPI):
             ))
     db = SessionLocal()
     try:
-        seed_database(db)
+        if settings.app_env == "production":
+            verificar_banco_producao(db)
+        if settings.demo_seed_ativo:
+            seed_database(db)
         seed_authorization(db)
     finally:
         db.close()
@@ -50,9 +55,16 @@ app.include_router(admin.router)
 app.include_router(pacientes.router)
 app.include_router(psicologos.router)
 app.include_router(agendamentos.router)
+app.include_router(recorrencias.router)
 app.include_router(prontuario.router)
 app.include_router(financeiro.router)
 app.include_router(dashboard.router)
+
+
+@app.get("/api/config/publico")
+def configuracao_publica():
+    """Somente dados de apresentação; nunca expõe chave, banco ou credenciais."""
+    return {"ambiente": settings.app_env, "demo_habilitada": settings.demo_seed_ativo}
 
 
 @app.get("/health")

@@ -7,8 +7,10 @@ Senha padrão de todos os perfis demo: demo123
 
 from datetime import datetime, timedelta
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.config import EMAILS_DEMO, Settings, settings
 from app.auth import get_password_hash
 from app.models import (
     Agendamento,
@@ -38,6 +40,11 @@ PERMISSOES_INICIAIS = [
     ("prontuario:ler_todos", "Ler todos os prontuários", "Ler prontuários de todos os profissionais."),
     ("prontuario:criar", "Criar evolução clínica", "Registrar evolução em atendimento realizado."),
 ]
+
+def verificar_banco_producao(db: Session) -> None:
+    """Não altera nem apaga contas; impede promover uma base demo por engano."""
+    if db.query(Usuario.id).filter(func.lower(Usuario.email).in_(EMAILS_DEMO)).first():
+        raise RuntimeError("A base contém contas de demonstração. Use uma base de produção separada; nenhum usuário foi removido.")
 
 
 def seed_authorization(db: Session) -> None:
@@ -95,8 +102,10 @@ def seed_authorization(db: Session) -> None:
     db.commit()
 
 
-def seed_database(db: Session) -> None:
+def seed_database(db: Session, config: Settings | None = None) -> None:
     """Popula psicólogos, pacientes, usuários e agendamentos apenas na primeira execução."""
+    if not (config or settings).demo_seed_ativo:
+        return
     if db.query(Usuario).count() > 0:
         return
 
@@ -182,7 +191,7 @@ def seed_database(db: Session) -> None:
                 status=status,
             )
         )
-    db.commit()
+    db.flush()
 
     from app.services import criar_lancamentos_agendamento_realizado
 
@@ -193,3 +202,4 @@ def seed_database(db: Session) -> None:
     )
     for ag in realizados:
         criar_lancamentos_agendamento_realizado(db, ag)
+    db.commit()

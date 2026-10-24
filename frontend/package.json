@@ -7,6 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test:horarios": "node --test tests/agenda-horarios.test.mjs",
+    "test:agenda-modal": "node tests/agenda-modal.test.mjs",
+    "test:login-ambiente": "node tests/agenda-modal.test.mjs --login",
+    "test:escopo-interface": "node tests/agenda-modal.test.mjs --escopo",
     "preview": "vite preview"
   },
   "dependencies": {

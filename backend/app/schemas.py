@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.horarios import utc_com_fuso
 
 from app.models import (
     PerfilUsuario,
@@ -163,8 +165,8 @@ class PacienteRead(PacienteBase):
 
 
 class AgendamentoBase(BaseModel):
-    paciente_id: int
-    psicologo_id: int
+    paciente_id: int = Field(gt=0)
+    psicologo_id: int = Field(gt=0)
     inicio: datetime
     fim: datetime
     status: StatusAgendamento = StatusAgendamento.agendado
@@ -176,12 +178,69 @@ class AgendamentoCreate(AgendamentoBase):
 
 
 class AgendamentoUpdate(BaseModel):
-    paciente_id: int | None = None
-    psicologo_id: int | None = None
+    paciente_id: int | None = Field(default=None, gt=0)
+    psicologo_id: int | None = Field(default=None, gt=0)
     inicio: datetime | None = None
     fim: datetime | None = None
     status: StatusAgendamento | None = None
     observacoes: str | None = None
+    motivo_cancelamento: str | None = Field(default=None, max_length=500)
+
+
+class ReagendamentoCreate(BaseModel):
+    inicio: datetime
+    fim: datetime
+
+
+class RelogioAgendaRead(BaseModel):
+    agora: datetime
+    fuso_horario: str = "America/Sao_Paulo"
+
+
+class RecorrenciaCreate(BaseModel):
+    paciente_id: int = Field(gt=0)
+    psicologo_id: int = Field(gt=0)
+    inicio: datetime
+    fim: datetime
+    intervalo_dias: Literal[7, 14]
+
+
+class RecorrenciaEncerrar(BaseModel):
+    a_partir_de: datetime | None = None
+    motivo: str = Field(min_length=1, max_length=500)
+
+    @field_validator("motivo")
+    @classmethod
+    def motivo_nao_vazio(cls, valor: str) -> str:
+        if not valor.strip():
+            raise ValueError("Informe o motivo.")
+        return valor.strip()
+
+
+class RecorrenciaAlterar(RecorrenciaEncerrar):
+    a_partir_de: datetime
+    inicio: datetime
+    fim: datetime
+    intervalo_dias: Literal[7, 14]
+
+
+class RecorrenciaRead(BaseModel):
+    id: int
+    paciente_id: int
+    psicologo_id: int
+    paciente_nome: str
+    psicologo_nome: str
+    inicio: datetime
+    duracao_minutos: int
+    intervalo_dias: int
+    encerrada_em: datetime | None
+    motivo_encerramento: str | None
+    anterior_id: int | None
+
+    @field_validator("inicio", "encerrada_em")
+    @classmethod
+    def utc_explicito(cls, valor):
+        return utc_com_fuso(valor) if valor is not None else None
 
 
 class AgendamentoRead(AgendamentoBase):
@@ -190,6 +249,17 @@ class AgendamentoRead(AgendamentoBase):
     criado_em: datetime
     paciente_nome: str | None = None
     psicologo_nome: str | None = None
+    possui_historico_financeiro: bool = False
+    pode_reabrir: bool = False
+    pode_reagendar: bool = False
+    reagendado_de_id: int | None = None
+    reagendado_para_id: int | None = None
+    recorrencia_id: int | None = None
+
+    @field_validator("inicio", "fim")
+    @classmethod
+    def identificar_fuso_utc(cls, valor: datetime) -> datetime:
+        return utc_com_fuso(valor)
 
 
 class LancamentoBase(BaseModel):
@@ -209,6 +279,16 @@ class LancamentoRead(LancamentoBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
     automatico: bool
+
+
+class EstornoRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    lancamento_original_id: int
+    lancamento_estorno_id: int
+    usuario_id: int
+    motivo: str
+    criado_em: datetime
 
 
 class DashboardStats(BaseModel):

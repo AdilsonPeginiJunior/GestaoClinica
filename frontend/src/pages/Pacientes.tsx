@@ -9,7 +9,7 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Pacientes() {
   const { usuario } = useAuth();
-  const podeGerenciar = Boolean(usuario?.permissoes.includes("pacientes:gerenciar"));
+  const podeGerenciar = Boolean(usuario?.permissoes.includes("pacientes:gerenciar") && usuario.perfil !== "psicologo");
   const [lista, setLista] = useState<Paciente[]>([]);
   const [busca, setBusca] = useState("");
   const [mostrarForm, setMostrarForm] = useState(false);
@@ -61,6 +61,7 @@ export default function Pacientes() {
       <header className="page-header">
         <h2>Pacientes</h2>
         <p>Cadastro administrativo — sem dados clinicos sigilosos neste prototipo.</p>
+        {usuario?.perfil === "psicologo" && <p>Pacientes vinculados à sua agenda ou recorrência. Novos pacientes são direcionados pela recepção ou gestão.</p>}
       </header>
       {erro && <p className="erro">{erro}</p>}
       {sucesso && <p style={{ color: "var(--cor-sucesso)", fontSize: "0.9rem" }}>{sucesso}</p>}

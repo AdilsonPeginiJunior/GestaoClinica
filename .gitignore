@@ -4,6 +4,8 @@ __pycache__/
 .venv/
 venv/
 backend/gestao_clinica.db
+backend/gestao_clinica.db-wal
+backend/gestao_clinica.db-shm
 
 # Node
 frontend/node_modules/

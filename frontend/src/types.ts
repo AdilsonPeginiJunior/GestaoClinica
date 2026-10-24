@@ -109,6 +109,26 @@ export interface Agendamento {
   criado_em: string;
   paciente_nome?: string | null;
   psicologo_nome?: string | null;
+  possui_historico_financeiro: boolean;
+  pode_reabrir: boolean;
+  pode_reagendar: boolean;
+  reagendado_de_id: number | null;
+  reagendado_para_id: number | null;
+  recorrencia_id: number | null;
+}
+
+export interface Recorrencia {
+  id: number;
+  paciente_id: number;
+  psicologo_id: number;
+  paciente_nome: string;
+  psicologo_nome: string;
+  inicio: string;
+  duracao_minutos: number;
+  intervalo_dias: 7 | 14;
+  encerrada_em: string | null;
+  motivo_encerramento: string | null;
+  anterior_id: number | null;
 }
 
 export interface DashboardStats {

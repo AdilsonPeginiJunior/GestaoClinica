@@ -12,6 +12,7 @@ import type {
   Prontuario,
   Psicologo,
   RelatorioPsicologo,
+  Recorrencia,
   StatusAgendamento,
   TokenResponse,
   Usuario,
@@ -21,8 +22,8 @@ import type {
 const TOKEN_KEY = "gestao_clinica_token";
 
 export const api = axios.create({
-  // Em dev o Vite faz proxy de /api -> localhost:8000 (vite.config.ts)
-  baseURL: import.meta.env.DEV ? "/api" : "http://localhost:8000/api",
+  // Em dev o Vite faz proxy; em produção o servidor publica /api na mesma origem.
+  baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
   headers: { "Content-Type": "application/json" },
   timeout: 15000,
 });
@@ -69,6 +70,16 @@ export async function fetchMe(): Promise<Usuario> {
   return data;
 }
 
+export interface ConfiguracaoPublica {
+  ambiente: "demo" | "production";
+  demo_habilitada: boolean;
+}
+
+export async function fetchConfiguracaoPublica(): Promise<ConfiguracaoPublica> {
+  const { data } = await api.get<ConfiguracaoPublica>("/config/publico");
+  return data;
+}
+
 export async function fetchDashboard(): Promise<DashboardStats> {
   const { data } = await api.get<DashboardStats>("/dashboard");
   return data;
@@ -99,6 +110,11 @@ export async function fetchAgendamentos(params: {
   return data;
 }
 
+export async function fetchRelogioAgenda(): Promise<{ agora: string; fuso_horario: string }> {
+  const { data } = await api.get<{ agora: string; fuso_horario: string }>("/agendamentos/relogio");
+  return data;
+}
+
 /** Novo horario na agenda (recepcao / gestao). */
 export async function createAgendamento(payload: {
   paciente_id: number;
@@ -115,9 +131,45 @@ export async function createAgendamento(payload: {
 /** Alterar status dispara regra financeira quando status = realizado. */
 export async function updateAgendamento(
   id: number,
-  payload: { status?: StatusAgendamento },
+  payload: { status?: StatusAgendamento; motivo_cancelamento?: string },
 ): Promise<Agendamento> {
   const { data } = await api.patch<Agendamento>(`/agendamentos/${id}`, payload);
+  return data;
+}
+
+/** Cria atendimento futuro vinculado, preservando a reserva anterior. */
+export async function reagendarAgendamento(id: number, inicio: string, fim: string): Promise<Agendamento> {
+  const { data } = await api.post<Agendamento>(`/agendamentos/${id}/reagendar`, { inicio, fim });
+  return data;
+}
+
+export async function fetchRecorrencias(): Promise<Recorrencia[]> {
+  const { data } = await api.get<Recorrencia[]>("/recorrencias");
+  return data;
+}
+
+export async function gerarSessoesRecorrentes(): Promise<void> {
+  await api.post("/recorrencias/gerar");
+}
+
+export async function criarRecorrencia(payload: {
+  paciente_id: number; psicologo_id: number; inicio: string; fim: string; intervalo_dias: 7 | 14;
+}): Promise<Recorrencia> {
+  const { data } = await api.post<Recorrencia>("/recorrencias", payload);
+  return data;
+}
+
+export async function encerrarRecorrencia(id: number, payload: {
+  a_partir_de: string | null; motivo: string;
+}): Promise<Recorrencia> {
+  const { data } = await api.post<Recorrencia>(`/recorrencias/${id}/encerrar`, payload);
+  return data;
+}
+
+export async function alterarRecorrencia(id: number, payload: {
+  a_partir_de: string; motivo: string; inicio: string; fim: string; intervalo_dias: 7 | 14;
+}): Promise<Recorrencia> {
+  const { data } = await api.post<Recorrencia>(`/recorrencias/${id}/alterar`, payload);
   return data;
 }
 

@@ -3,6 +3,7 @@
  */
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useAmbiente } from "../context/useAmbiente";
 
 const ROTULO_PERFIL: Record<string, string> = {
   recepcionista: "Recepção",
@@ -13,6 +14,7 @@ const ROTULO_PERFIL: Record<string, string> = {
 
 export default function Layout() {
   const { usuario, logout } = useAuth();
+  const ambiente = useAmbiente();
 
   const temPermissao = (...permissoes: string[]) =>
     permissoes.some((permissao) => usuario?.permissoes.includes(permissao));
@@ -21,7 +23,7 @@ export default function Layout() {
     <div className="app-shell">
       <aside className="sidebar">
         <h1>Gestão Clínica</h1>
-        <p className="subtitulo">Protótipo v0.2</p>
+        <p className="subtitulo">{ambiente?.ambiente === "demo" ? "Demonstração · v0.2" : "Gestão da clínica"}</p>
         <nav>
           {temPermissao("dashboard:acessar") && (
             <NavLink to="/" end className={({ isActive }) => (isActive ? "ativo" : "")}>

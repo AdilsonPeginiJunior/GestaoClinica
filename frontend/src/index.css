@@ -141,6 +141,59 @@ a {
   max-width: 480px;
 }
 
+/* Janelas da agenda: foco nativo, fundo bloqueado e conteúdo rolável. */
+.modal {
+  width: min(560px, calc(100% - 2rem));
+  max-width: none;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio);
+  background: var(--cor-cartao);
+  color: var(--cor-texto);
+  box-shadow: 0 24px 70px rgba(19, 78, 74, 0.25);
+  overflow: auto;
+}
+
+.modal::backdrop {
+  background: rgba(15, 40, 38, 0.48);
+}
+
+.modal-amplo {
+  width: min(1000px, calc(100% - 2rem));
+}
+
+.modal-cabecalho {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--cor-borda);
+  background: var(--cor-cartao);
+}
+
+.modal-cabecalho h3 { margin: 0; font-size: 1.1rem; }
+.modal-fechar { background: transparent; color: var(--cor-texto); font-size: 1.5rem; padding: 0.15rem 0.65rem; }
+.modal-corpo { padding: 1.25rem; }
+.modal-corpo .form-grid { max-width: none; }
+.modal-corpo p:first-child { margin-top: 0; }
+.modal-corpo input, .modal-corpo select, .modal-corpo textarea { min-width: 0; width: 100%; }
+.modal-corpo textarea { min-height: 90px; resize: vertical; }
+.campo-checkbox { flex-direction: row; align-items: center; gap: 0.5rem; margin: 1rem 0; }
+.modal-corpo .campo-checkbox input { width: 1rem; height: 1rem; margin: 0; flex: none; }
+.modal :focus-visible { outline: 2px solid var(--cor-primaria); outline-offset: 3px; }
+.modal button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+@media (max-width: 600px) {
+  .modal, .modal-amplo { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); }
+  .modal-cabecalho, .modal-corpo { padding: 1rem; }
+}
+
 label {
   display: flex;
   flex-direction: column;

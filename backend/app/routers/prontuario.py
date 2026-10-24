@@ -1,13 +1,14 @@
 """Registro de evolucoes clinicas vinculadas a consultas realizadas."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.auth import has_permission, require_permission
 from app.database import get_db
+from app.escopo import profissional_restrito
 from app.models import Agendamento, Prontuario, StatusAgendamento, Usuario
 from app.schemas import AgendamentoRead, ProntuarioCreate, ProntuarioRead
+from app.transacoes import bloquear_agendamento, transacao
 
 router = APIRouter(prefix="/api/prontuario", tags=["prontuario"])
 
@@ -69,6 +70,7 @@ def listar_prontuarios(
         require_permission("prontuario:ler_proprio", "prontuario:ler_todos")
     ),
 ):
+    profissional_restrito(user)
     query = db.query(Prontuario).options(
         joinedload(Prontuario.paciente), joinedload(Prontuario.psicologo)
     )
@@ -86,32 +88,26 @@ def criar_evolucao(
     db: Session = Depends(get_db),
     user: Usuario = Depends(require_permission("prontuario:criar")),
 ):
-    if not user.psicologo_id:
-        raise HTTPException(status_code=403, detail="Usuario sem psicologo vinculado.")
-    appointment = db.get(Agendamento, payload.agendamento_id)
-    if not appointment:
-        raise HTTPException(status_code=404, detail="Atendimento nao encontrado.")
-    if appointment.psicologo_id != user.psicologo_id:
-        raise HTTPException(status_code=403, detail="Acesso negado a este atendimento.")
-    if appointment.status != StatusAgendamento.realizado:
-        raise HTTPException(status_code=409, detail="So e possivel registrar evolucao em atendimento realizado.")
-    if db.query(Prontuario).filter(Prontuario.agendamento_id == appointment.id).first():
-        raise HTTPException(status_code=409, detail="Este atendimento ja possui evolucao registrada.")
+    with transacao(db):
+        appointment = bloquear_agendamento(db, payload.agendamento_id)
+        if not user.psicologo_id:
+            raise HTTPException(status_code=403, detail="Usuario sem psicologo vinculado.")
+        if appointment.psicologo_id != user.psicologo_id:
+            raise HTTPException(status_code=403, detail="Acesso negado a este atendimento.")
+        if appointment.status != StatusAgendamento.realizado:
+            raise HTTPException(status_code=409, detail="So e possivel registrar evolucao em atendimento realizado.")
+        if db.query(Prontuario).filter(Prontuario.agendamento_id == appointment.id).first():
+            raise HTTPException(status_code=409, detail="Este atendimento ja possui evolucao registrada.")
 
-    record = Prontuario(
-        paciente_id=appointment.paciente_id,
-        agendamento_id=appointment.id,
-        psicologo_id=user.psicologo_id,
-        evolucao=payload.evolucao.strip(),
-    )
-    if not record.evolucao:
-        raise HTTPException(status_code=422, detail="A evolucao nao pode ficar vazia.")
-    db.add(record)
-    try:
-        db.commit()
-    except IntegrityError as exc:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Este atendimento ja possui evolucao registrada.") from exc
+        record = Prontuario(
+            paciente_id=appointment.paciente_id,
+            agendamento_id=appointment.id,
+            psicologo_id=user.psicologo_id,
+            evolucao=payload.evolucao.strip(),
+        )
+        if not record.evolucao:
+            raise HTTPException(status_code=422, detail="A evolucao nao pode ficar vazia.")
+        db.add(record)
     record = (
         db.query(Prontuario)
         .options(joinedload(Prontuario.paciente), joinedload(Prontuario.psicologo))

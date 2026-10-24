@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.auth import has_permission, require_permission
 from app.database import get_db
+from app.escopo import filtrar_pacientes, profissional_restrito
 from app.models import (
     Agendamento,
     LancamentoFinanceiro,
@@ -21,6 +22,7 @@ from app.models import (
     Usuario,
 )
 from app.schemas import AgendamentoRead, DashboardStats, LancamentoRead, RelatorioPsicologo
+from app.services import filtro_parcela_clinica_legada
 
 router = APIRouter(prefix="/api", tags=["dashboard"])
 
@@ -51,12 +53,12 @@ def dashboard(
 
     ag_query = db.query(Agendamento)
     lanc_query = db.query(LancamentoFinanceiro).filter(LancamentoFinanceiro.data_lancamento >= mes_ini)
-    pacientes_query = db.query(Paciente).filter(Paciente.ativo.is_(True))
+    pacientes_query = filtrar_pacientes(db.query(Paciente).filter(Paciente.ativo.is_(True)), current_user)
 
     extras: dict = {}
 
-    if current_user.perfil == PerfilUsuario.psicologo and current_user.psicologo_id:
-        pid = current_user.psicologo_id
+    pid = profissional_restrito(current_user)
+    if pid is not None:
         ag_query = ag_query.filter(Agendamento.psicologo_id == pid)
         lanc_query = lanc_query.filter(LancamentoFinanceiro.psicologo_id == pid)
         extras["meu_psicologo_id"] = pid
@@ -66,8 +68,14 @@ def dashboard(
     agendamentos_hoje = ag_query.filter(Agendamento.inicio >= hoje_ini, Agendamento.inicio < hoje_fim).count()
     agendamentos_realizados = ag_query.filter(Agendamento.status == StatusAgendamento.realizado).count()
 
+    # Versões antigas gravavam também a parcela da clínica como receita.
+    # Preservamos esses registros, sem somá-los novamente ao faturamento bruto.
+    # O conjunto completo evita excluir receitas manuais ou sem profissional.
     receita_periodo = (
-        lanc_query.filter(LancamentoFinanceiro.tipo == TipoLancamento.receita)
+        lanc_query.filter(
+            LancamentoFinanceiro.tipo == TipoLancamento.receita,
+            ~filtro_parcela_clinica_legada(),
+        )
         .with_entities(func.coalesce(func.sum(LancamentoFinanceiro.valor), 0.0))
         .scalar()
         or 0.0
@@ -107,6 +115,7 @@ def relatorio_psicologo(
     data_inicio: datetime | None = Query(None),
     data_fim: datetime | None = Query(None),
 ):
+    profissional_restrito(current_user)
     if has_permission(current_user, "relatorios:consultar_todos"):
         pass
     elif (

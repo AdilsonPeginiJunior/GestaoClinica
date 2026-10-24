@@ -14,7 +14,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from app.config import settings
+from app.config import EMAILS_DEMO, settings
 from app.database import get_db
 from app.models import PerfilUsuario, Usuario
 from app.schemas import TokenData
@@ -54,6 +54,8 @@ def authenticate_user(db: Session, email: str, password: str) -> Usuario | None:
     user = db.query(Usuario).filter(Usuario.email == email).first()
     if not user or not user.ativo:
         return None
+    if settings.app_env == "production" and user.email.lower() in EMAILS_DEMO:
+        return None
     if not verify_password(password, user.senha_hash):
         return None
     return user
@@ -80,6 +82,8 @@ def get_current_user(
 
     user = db.query(Usuario).filter(Usuario.email == token_data.sub).first()
     if user is None or not user.ativo:
+        raise credentials_exception
+    if settings.app_env == "production" and user.email.lower() in EMAILS_DEMO:
         raise credentials_exception
     return user
 
@@ -109,6 +113,11 @@ def require_permission(*permission_keys: str):
     """Permite a rota se o cargo possuir ao menos uma das permissões informadas."""
 
     def _checker(current_user: Annotated[Usuario, Depends(get_current_user)]) -> Usuario:
+        # Falha fechada em TODAS as rotas por permissão, inclusive cargos amplos.
+        if current_user.perfil == PerfilUsuario.psicologo and (
+            not current_user.psicologo_id or current_user.psicologo is None
+        ):
+            raise HTTPException(status_code=403, detail="Profissional sem vínculo cadastrado.")
         if not any(has_permission(current_user, key) for key in permission_keys):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acesso negado")
         return current_user

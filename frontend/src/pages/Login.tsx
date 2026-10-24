@@ -4,6 +4,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useAmbiente } from "../context/useAmbiente";
 import type { DemoUser } from "../types";
 
 const USUARIOS_DEMO: DemoUser[] = [
@@ -15,6 +16,7 @@ const USUARIOS_DEMO: DemoUser[] = [
 
 export default function Login() {
   const { usuario, login, carregando } = useAuth();
+  const ambiente = useAmbiente();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export default function Login() {
       <div className="login-card">
         <h1>Gestão Clínica</h1>
         <p style={{ color: "var(--cor-texto-suave)", marginBottom: "1.25rem" }}>
-          Protótipo para apresentação — dados fictícios
+          {ambiente?.ambiente === "demo" ? "Demonstração — dados fictícios" : "Acesso ao sistema"}
         </p>
         <form onSubmit={handleSubmit} className="form-grid">
           <label>
@@ -84,6 +86,7 @@ export default function Login() {
             {enviando ? "Entrando…" : "Entrar"}
           </button>
         </form>
+        {ambiente?.ambiente === "demo" && ambiente.demo_habilitada === true && <>
         <p style={{ marginTop: "1.25rem", fontSize: "0.85rem", fontWeight: 600 }}>Acesso rápido (demo)</p>
         <div className="demo-users">
           {USUARIOS_DEMO.map((u) => (
@@ -92,6 +95,7 @@ export default function Login() {
             </button>
           ))}
         </div>
+        </>}
       </div>
     </div>
   );
